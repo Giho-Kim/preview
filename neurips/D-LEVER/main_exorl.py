@@ -57,6 +57,7 @@ parser.add_argument("--target_conservative_penalty", type=float, default=50.0)
 parser.add_argument("--action_condition_index", type=int)
 parser.add_argument("--action_condition_value", type=float)
 parser.add_argument("--cql_alpha", type=float, default=0.01)
+parser.add_argument("--z_mix_ratio", type=float)
 args = parser.parse_args()
 
 if args.wandb_logging == "True":
