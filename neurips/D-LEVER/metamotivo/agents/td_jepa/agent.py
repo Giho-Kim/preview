@@ -176,24 +176,77 @@ class TDJEPAAgent:
         return self._model.act(obs, z, mean)
 
     @torch.no_grad()
-    def sample_mixed_z(self, train_goal: Optional[torch.Tensor] = None, *args, **kwargs):
+    def sample_mixed_z(
+        self,
+        train_goal: Optional[torch.Tensor] = None,
+        score_obs: Optional[torch.Tensor] = None,
+        *args,
+        **kwargs,
+    ):
         # samples a batch from the z distribution used to update the networks
         if self.tilt is None:
             z = self._model.sample_z(self.cfg.train.batch_size, device=self.device)
         else:
             z = self.tilt.z
         if train_goal is not None:
-            perm = torch.randperm(self.cfg.train.batch_size, device=self.device)
-            train_goal = train_goal[perm]
-            # NOTE: this assumes that train_goal has already been passed through the psi_rgb_encoder and obs_normalizer
-            goals = self._model._phi_mlp_encoder(train_goal) if self.cfg.model.symmetric else self._model._psi_mlp_encoder(train_goal)
-            if self.cfg.train.scale_train_goals:
-                inv_cov = torch.inverse(self._model._z_cov + 1e-6 * torch.eye(*self._model._z_cov.size(), device=z.device))
-                goals = torch.matmul(goals, inv_cov)
-            goals = self._model.project_z(goals)
-            mask = torch.rand((self.cfg.train.batch_size, 1), device=self.device) < self.cfg.train.train_goal_ratio
-            z = torch.where(mask, goals, z)
+            mask = torch.rand(self.cfg.train.batch_size, device=self.device) < self.cfg.train.train_goal_ratio
+            if self.tilt is None:
+                perm = torch.randperm(self.cfg.train.batch_size, device=self.device)
+                train_goal = train_goal[perm]
+                goals = self.project_train_goals(train_goal)
+                z = torch.where(mask.unsqueeze(-1), goals, z)
+            elif mask.any():
+                z = z.clone()
+                z[mask] = self.sample_tilted_goal_z(
+                    train_goal=train_goal,
+                    score_obs=score_obs if score_obs is not None else train_goal,
+                    size=int(mask.sum().item()),
+                )
         return z
+
+    @torch.no_grad()
+    def project_train_goals(self, train_goal: torch.Tensor) -> torch.Tensor:
+        # NOTE: this assumes that train_goal has already been passed through the
+        # psi_rgb_encoder and obs_normalizer. In symmetric mode psi and phi share it.
+        goals = (
+            self._model._phi_mlp_encoder(train_goal)
+            if self.cfg.model.symmetric
+            else self._model._psi_mlp_encoder(train_goal)
+        )
+        if self.cfg.train.scale_train_goals:
+            inv_cov = torch.inverse(
+                self._model._z_cov
+                + 1e-6 * torch.eye(*self._model._z_cov.size(), device=goals.device)
+            )
+            goals = torch.matmul(goals, inv_cov)
+        return self._model.project_z(goals)
+
+    @torch.no_grad()
+    def sample_tilted_goal_z(
+        self,
+        train_goal: torch.Tensor,
+        score_obs: torch.Tensor,
+        size: int,
+    ) -> torch.Tensor:
+        candidate_size = 2 * size
+        candidate_indices = torch.randint(
+            0, train_goal.shape[0], (candidate_size,), device=train_goal.device
+        )
+        goal_candidates = train_goal[candidate_indices]
+        score_candidates = score_obs[candidate_indices]
+        z_candidates = self.project_train_goals(goal_candidates)
+
+        candidate_score, _ = self.score_and_grad(
+            phi_obs=score_candidates,
+            z=z_candidates,
+            centering=False,
+        )
+        logits = candidate_score / self.tilt.temperature
+        logits = logits - logits.max()
+        prob = torch.softmax(logits, dim=0)
+        selected_idx = torch.multinomial(prob, num_samples=size, replacement=False)
+
+        return z_candidates[selected_idx]
 
     @torch.no_grad()
     def augment_image(self, obs, next_obs):
@@ -257,7 +310,7 @@ class TDJEPAAgent:
                     ),
                 )
 
-        z = self.sample_mixed_z(train_goal=psi_next_obs).clone()
+        z = self.sample_mixed_z(train_goal=psi_next_obs, score_obs=phi_next_obs).clone()
 
         metrics = self.update_tdjepa(
             phi_obs=phi_obs,
