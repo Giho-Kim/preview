@@ -312,7 +312,10 @@ class TDJEPAAgent:
             action = self.sample_action_from_latent(actor_in, z, mean=False)
 
         target_phi_predictors = self._model._target_phi_predictor(phi_enc, z, action)
-        v = target_phi_predictors.reshape(-1, target_phi_predictors.shape[-1])
+        if target_phi_predictors.ndim == 3:
+            v = target_phi_predictors.mean(dim=0)
+        else:
+            v = target_phi_predictors
 
         if centering:
             v_metric = v - self.tilt.running_mean.detach()
