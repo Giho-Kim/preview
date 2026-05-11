@@ -169,7 +169,10 @@ class OfflineRLWorkspace(AbstractWorkspace):
 
                     # delete current best model
                     if best_model_path is not None:
-                        best_model_path.unlink(missing_ok=True)
+                        if best_model_path.is_dir():
+                            shutil.rmtree(best_model_path)
+                        else:
+                            best_model_path.unlink(missing_ok=True)
 
                     agent._name = i  # pylint: disable=protected-access
                     # save locally
