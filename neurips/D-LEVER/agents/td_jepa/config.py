@@ -4,6 +4,8 @@ import ast
 from pathlib import Path
 from typing import Any, Dict
 
+import yaml
+
 TRAIN_DEFAULTS = {
     "lr_predictor": 1e-4,
     "lr_phi": 1e-4,
@@ -72,10 +74,20 @@ def _load_base_cfg(script_path: Path) -> Dict[str, Any]:
     raise RuntimeError(f"BASE_CFG not found in {script_path}")
 
 
+def _load_local_config() -> Dict[str, Any]:
+    config_path = Path(__file__).with_name("config.yaml")
+    with config_path.open("rb") as f:
+        return yaml.safe_load(f)
+
+
 def load_td_jepa_config(tilt: bool) -> Dict[str, Any]:
     """Load TD-JEPA defaults from the original project's launcher config."""
 
-    base_cfg = _load_base_cfg(_launch_script_path(tilt))
+    script_path = _launch_script_path(tilt)
+    if not script_path.exists():
+        return _load_local_config()
+
+    base_cfg = _load_base_cfg(script_path)
 
     agent_cfg = base_cfg["agent"]
     model_cfg = agent_cfg["model"]
