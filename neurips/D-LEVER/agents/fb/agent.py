@@ -55,6 +55,8 @@ class FB(AbstractAgent):
         tilt_temperature_end: float,
         tilt_candidate_multiplier: int,
         tilt_init_geom_ratio: float,
+        tilt_ridge_alpha: float,
+        tilt_ridge_min: float,
         device: torch.device,
         name: str,
     ):
@@ -136,6 +138,8 @@ class FB(AbstractAgent):
         self._tilt_temperature_start = tilt_temperature_start
         self._tilt_temperature_end = tilt_temperature_end
         self._tilting_by_z = tilting_by_z
+        self._tilt_ridge_alpha = tilt_ridge_alpha
+        self._tilt_ridge_min = tilt_ridge_min
         self.std_dev_schedule = std_dev_schedule
         self.tilt = None
         if tilt:
@@ -282,7 +286,7 @@ class FB(AbstractAgent):
     def sample_tilted_goal_z(
         self, train_goal: torch.Tensor, size: int, step: int
     ) -> torch.Tensor:
-        candidate_size = 2 * size
+        candidate_size = 4 * size
         candidate_indices = torch.randint(
             0, train_goal.shape[0], (candidate_size,), device=train_goal.device
         )
@@ -320,10 +324,11 @@ class FB(AbstractAgent):
         )
         features = 0.5 * (target_f1 + target_f2)
 
-        ridge_alpha = 1e-1
-        ridge_min = 1e-8
         trace_g = torch.trace(self.tilt.gram)
-        lam = max(ridge_alpha * trace_g.item() / self.tilt.gram.shape[0], ridge_min)
+        lam = max(
+            self._tilt_ridge_alpha * trace_g.item() / self.tilt.gram.shape[0],
+            self._tilt_ridge_min,
+        )
         identity = torch.eye(
             features.shape[-1], device=features.device, dtype=features.dtype
         )

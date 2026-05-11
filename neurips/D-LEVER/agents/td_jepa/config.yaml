@@ -29,6 +29,8 @@ tilt_temperature: 20.0
 tilt_temperature_start: 20.0
 tilt_temperature_end: 1.0
 tilt_candidate_multiplier: 10
+tilt_ridge_alpha: 0.001
+tilt_ridge_min: 0.00000001
 
 actor_std: 0.2
 actor_use_full_encoder: true

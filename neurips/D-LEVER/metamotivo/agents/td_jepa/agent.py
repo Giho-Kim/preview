@@ -48,6 +48,8 @@ class TDJEPAAgentTrainConfig(BaseConfig):
     tilt_temperature_end: float = 1.0
     tilt_candidate_multiplier: int = 10
     tilt_init_geom_ratio: float = 0.9
+    tilt_ridge_alpha: float = 1e-3
+    tilt_ridge_min: float = 1e-8
 
 
 class TDJEPAAgentConfig(BaseConfig):
@@ -302,8 +304,6 @@ class TDJEPAAgent:
         return metrics
 
     def score_and_grad(self, phi_obs, z, centering=False):
-        ridge_alpha = 1e-3
-        ridge_min = 1e-8
         z = z.detach().clone().requires_grad_(True)
 
         with torch.no_grad():
@@ -322,8 +322,12 @@ class TDJEPAAgent:
         with torch.no_grad():
             trace_G = torch.trace(self.tilt.gram)
             lam = torch.maximum(
-                ridge_alpha * trace_G / self.tilt.gram.shape[0],
-                torch.tensor(ridge_min, device=self.tilt.gram.device, dtype=self.tilt.gram.dtype),
+                self.cfg.train.tilt_ridge_alpha * trace_G / self.tilt.gram.shape[0],
+                torch.tensor(
+                    self.cfg.train.tilt_ridge_min,
+                    device=self.tilt.gram.device,
+                    dtype=self.tilt.gram.dtype,
+                ),
             )
             identity = torch.eye(v_metric.shape[-1], device=v_metric.device, dtype=v_metric.dtype)
             ginv = torch.linalg.pinv(self.tilt.gram + lam * identity)

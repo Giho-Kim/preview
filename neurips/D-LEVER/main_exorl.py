@@ -31,10 +31,13 @@ parser.add_argument("domain_name", type=str)
 parser.add_argument("exploration_algorithm", type=str)
 parser.add_argument("--tilt", action="store_true")
 parser.add_argument("--tilting_by_z", action="store_true")
+parser.add_argument("--tilt_beta", type=float)
 parser.add_argument("--tilt_temperature", type=float)
 parser.add_argument("--tilt_temperature_start", type=float)
 parser.add_argument("--tilt_temperature_end", type=float)
 parser.add_argument("--tilt_init_geom_ratio", type=float)
+parser.add_argument("--tilt_ridge_alpha", type=float)
+parser.add_argument("--tilt_ridge_min", type=float)
 parser.add_argument("--wandb_logging", type=str, default="True")
 parser.add_argument("--seed", type=int, default=42)
 parser.add_argument("--alpha", type=float, default=0.01)
@@ -112,17 +115,26 @@ if args.algorithm != "td_jepa":
         config = yaml.safe_load(f)
 
 cli_args = vars(args).copy()
+tilt_beta_override = cli_args.pop("tilt_beta", None)
 tilt_temperature_override = cli_args.pop("tilt_temperature", None)
 tilt_temperature_start_override = cli_args.pop("tilt_temperature_start", None)
 tilt_temperature_end_override = cli_args.pop("tilt_temperature_end", None)
 tilt_init_geom_ratio_override = cli_args.pop("tilt_init_geom_ratio", None)
+tilt_ridge_alpha_override = cli_args.pop("tilt_ridge_alpha", None)
+tilt_ridge_min_override = cli_args.pop("tilt_ridge_min", None)
 config.update(cli_args)
+if tilt_beta_override is not None:
+    config["tilt_beta"] = tilt_beta_override
 if tilt_temperature_start_override is not None:
     config["tilt_temperature_start"] = tilt_temperature_start_override
 if tilt_temperature_end_override is not None:
     config["tilt_temperature_end"] = tilt_temperature_end_override
 if tilt_init_geom_ratio_override is not None:
     config["tilt_init_geom_ratio"] = tilt_init_geom_ratio_override
+if tilt_ridge_alpha_override is not None:
+    config["tilt_ridge_alpha"] = tilt_ridge_alpha_override
+if tilt_ridge_min_override is not None:
+    config["tilt_ridge_min"] = tilt_ridge_min_override
 if (
     tilt_temperature_override is not None
     and tilt_temperature_start_override is None
@@ -136,6 +148,10 @@ elif tilt_temperature_override is not None:
 
 if "tilt_init_geom_ratio" not in config:
     config["tilt_init_geom_ratio"] = 0.9
+if "tilt_ridge_alpha" not in config:
+    config["tilt_ridge_alpha"] = 1e-3 if config["algorithm"] == "td_jepa" else 1e-1
+if "tilt_ridge_min" not in config:
+    config["tilt_ridge_min"] = 1e-8
 
 config["device"] = torch.device(
     "cuda"
@@ -316,6 +332,8 @@ elif config["algorithm"] == "td_jepa":
         tilt_temperature_end=config["tilt_temperature_end"],
         tilt_candidate_multiplier=config["tilt_candidate_multiplier"],
         tilt_init_geom_ratio=config["tilt_init_geom_ratio"],
+        tilt_ridge_alpha=config["tilt_ridge_alpha"],
+        tilt_ridge_min=config["tilt_ridge_min"],
         actor_std=config["actor_std"],
         actor_use_full_encoder=config["actor_use_full_encoder"],
         symmetric=config["symmetric"],
@@ -403,6 +421,8 @@ elif config["algorithm"] == "fb":
         tilt_temperature_end=config["tilt_temperature_end"],
         tilt_candidate_multiplier=config["tilt_candidate_multiplier"],
         tilt_init_geom_ratio=config["tilt_init_geom_ratio"],
+        tilt_ridge_alpha=config["tilt_ridge_alpha"],
+        tilt_ridge_min=config["tilt_ridge_min"],
         device=config["device"],
         name=config["name"],
     )

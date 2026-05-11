@@ -22,6 +22,8 @@ TRAIN_DEFAULTS = {
     "tilt_temperature_start": 20.0,
     "tilt_temperature_end": 1.0,
     "tilt_candidate_multiplier": 2,
+    "tilt_ridge_alpha": 1e-3,
+    "tilt_ridge_min": 1e-8,
 }
 
 MODEL_DEFAULTS = {
@@ -120,6 +122,12 @@ def load_td_jepa_config(tilt: bool) -> Dict[str, Any]:
             "tilt_temperature_end", train_cfg.get("tilt_temperature", TRAIN_DEFAULTS["tilt_temperature_end"])
         ),
         "tilt_candidate_multiplier": TRAIN_DEFAULTS["tilt_candidate_multiplier"],
+        "tilt_ridge_alpha": train_cfg.get(
+            "tilt_ridge_alpha", TRAIN_DEFAULTS["tilt_ridge_alpha"]
+        ),
+        "tilt_ridge_min": train_cfg.get(
+            "tilt_ridge_min", TRAIN_DEFAULTS["tilt_ridge_min"]
+        ),
         "actor_std": model_cfg.get("actor_std", MODEL_DEFAULTS["actor_std"]),
         "actor_use_full_encoder": model_cfg.get(
             "actor_use_full_encoder", MODEL_DEFAULTS["actor_use_full_encoder"]
