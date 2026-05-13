@@ -137,6 +137,7 @@ class FB(AbstractAgent):
         self._learning_steps = max(1, learning_steps)
         self._tilt_temperature_start = tilt_temperature_start
         self._tilt_temperature_end = tilt_temperature_end
+        self._tilt_candidate_multiplier = tilt_candidate_multiplier
         self._tilting_by_z = tilting_by_z
         self._tilt_ridge_alpha = tilt_ridge_alpha
         self._tilt_ridge_min = tilt_ridge_min
@@ -286,7 +287,7 @@ class FB(AbstractAgent):
     def sample_tilted_goal_z(
         self, train_goal: torch.Tensor, size: int, step: int
     ) -> torch.Tensor:
-        candidate_size = 4 * size
+        candidate_size = self._tilt_candidate_multiplier * size
         candidate_indices = torch.randint(
             0, train_goal.shape[0], (candidate_size,), device=train_goal.device
         )

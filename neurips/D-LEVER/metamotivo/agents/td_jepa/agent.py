@@ -46,7 +46,7 @@ class TDJEPAAgentTrainConfig(BaseConfig):
     tilt_temperature: float = 20.0
     tilt_temperature_start: float = 20.0
     tilt_temperature_end: float = 1.0
-    tilt_candidate_multiplier: int = 10
+    tilt_candidate_multiplier: int = 2
     tilt_init_geom_ratio: float = 0.9
     tilt_ridge_alpha: float = 1e-3
     tilt_ridge_min: float = 1e-8
@@ -228,7 +228,7 @@ class TDJEPAAgent:
         score_obs: torch.Tensor,
         size: int,
     ) -> torch.Tensor:
-        candidate_size = 2 * size
+        candidate_size = self.cfg.train.tilt_candidate_multiplier * size
         candidate_indices = torch.randint(
             0, train_goal.shape[0], (candidate_size,), device=train_goal.device
         )

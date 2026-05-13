@@ -35,6 +35,7 @@ parser.add_argument("--tilt_beta", type=float)
 parser.add_argument("--tilt_temperature", type=float)
 parser.add_argument("--tilt_temperature_start", type=float)
 parser.add_argument("--tilt_temperature_end", type=float)
+parser.add_argument("--tilt_candidate_multiplier", type=int)
 parser.add_argument("--tilt_init_geom_ratio", type=float)
 parser.add_argument("--tilt_ridge_alpha", type=float)
 parser.add_argument("--tilt_ridge_min", type=float)
@@ -119,6 +120,7 @@ tilt_beta_override = cli_args.pop("tilt_beta", None)
 tilt_temperature_override = cli_args.pop("tilt_temperature", None)
 tilt_temperature_start_override = cli_args.pop("tilt_temperature_start", None)
 tilt_temperature_end_override = cli_args.pop("tilt_temperature_end", None)
+tilt_candidate_multiplier_override = cli_args.pop("tilt_candidate_multiplier", None)
 tilt_init_geom_ratio_override = cli_args.pop("tilt_init_geom_ratio", None)
 tilt_ridge_alpha_override = cli_args.pop("tilt_ridge_alpha", None)
 tilt_ridge_min_override = cli_args.pop("tilt_ridge_min", None)
@@ -129,6 +131,10 @@ if tilt_temperature_start_override is not None:
     config["tilt_temperature_start"] = tilt_temperature_start_override
 if tilt_temperature_end_override is not None:
     config["tilt_temperature_end"] = tilt_temperature_end_override
+if tilt_candidate_multiplier_override is not None:
+    if tilt_candidate_multiplier_override <= 0:
+        raise ValueError("tilt_candidate_multiplier must be positive.")
+    config["tilt_candidate_multiplier"] = tilt_candidate_multiplier_override
 if tilt_init_geom_ratio_override is not None:
     config["tilt_init_geom_ratio"] = tilt_init_geom_ratio_override
 if tilt_ridge_alpha_override is not None:
